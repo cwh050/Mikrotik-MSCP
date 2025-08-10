@@ -61,3 +61,16 @@ set show-at-login=no
 set allowed-interface-list=LAN
 /tool mac-server mac-winbox
 set allowed-interface-list=LAN
+
+#  You must manually copy these files to this router's file list from SITE 1 OpenVPN Router
+/certificate import file-name=ca_cert.crt
+/certificate import file-name=client_cert.crt
+/certificate import file-name=client_key.key
+/interface ovpn-client
+add connect-to=10.0.0.1 port=1194 user=ovpn-client-router2 password="" ca="ca-template_ca_cert.crt_0" certificate="client-router2-template_client_cert.crt_0" mode=ip
+add name="ovpn-client-tunnel"
+set [find name="ovpn-client-tunnel"] certificate="client-router2-template_client_cert.crt_0" mode=ip user=ovpn-client-router2 password="" connect-to=10.0.0.1 port=1194 ca="ca-template_ca_cert.crt_0"
+/ip route
+add dst-address=172.16.1.0/24 gateway=ovpn-client-tunnel comment="Route to Server Router's network"
+/ip address
+add address=10.0.0.2/24 interface=ovpn-client-tunnel comment="IP for OVPN client tunnel"
