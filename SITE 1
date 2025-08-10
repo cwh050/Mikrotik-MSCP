@@ -63,3 +63,31 @@ set show-at-login=no
 set allowed-interface-list=LAN
 /tool mac-server mac-winbox
 set allowed-interface-list=LAN
+/certificate
+add name="ca-template" common-name="Mikrotik-CA" key-size=2048 days-valid=3650
+sign ca-template ca=ca-template comment="Create a Certificate Authority"
+add name="server-template" common-name="ovpn-server" key-size=2048 days-valid=3650 comment="Create the Server Certificates"
+sign server-template ca=ca-template server=yes
+add name="client-router2-template" common-name="ovpn-client" key-size=2048 days-valid=3650
+sign client-router2-template ca=ca-template client=yes
+/certificate export-certificate ca=ca-template passphrase="" file-name=ca_cert.crt
+/certificate export-certificate client=client-router2-template passphrase="" file-name=client_cert.crt
+/certificate export-certificate client=client-router2-template passphrase="" file-name=client_key.key
+/interface ovpn-server
+set enabled=yes auth=sha1 cipher=aes128 name="ovpn-server"
+set port=1194
+set certificate=server-template
+/ip pool
+add name=ovpn_pool ranges=10.0.0.1-10.0.0.254
+/ip address
+add address=10.0.0.1/24 interface=ovpn-server-interface
+/ppp profile
+add name=ovpn-profile remote-address=ovpn_pool local-address=10.0.0.1
+/ppp secret
+add name=ovpn-client-router2 password="" profile=ovpn-profile service=ovpn
+/ip firewall filter
+add chain=input action=accept protocol=tcp dst-port=1194 comment="Allow OpenVPN traffic"
+/ip route
+add dst-address=172.6.1.0/24 gateway=10.0.0.2 comment="Route to Client Router's network"
+/ip firewall filter
+add chain=forward action=accept src-address=10.0.0.2 dst-address=10.0.0.0/24 comment="Allow OVPN traffic to local LAN"
